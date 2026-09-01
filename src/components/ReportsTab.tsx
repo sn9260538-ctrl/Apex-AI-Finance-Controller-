@@ -10,17 +10,18 @@ import Papa from "papaparse";
 import { 
   Download, FileText, ArrowRight, ShieldCheck, AlertTriangle, 
   FileSpreadsheet, Image as ImageIcon, CheckCircle2, History, TrendingUp, DollarSign, Clock, Layers,
-  PieChart as PieChartIcon, Activity
+  PieChart as PieChartIcon, Activity, Trophy
 } from 'lucide-react';
 import StaleWarningBanner from './StaleWarningBanner';
 import BudgetsTab from './BudgetsTab';
+import Track04EvaluationSection from './Track04EvaluationSection';
 import { ExceptionType } from '../types';
 
 interface ReportsTabProps {
   onNavigateToRecon?: () => void;
 }
 
-type ReportSubTab = 'finance_ops' | 'cash_liquidity' | 'budget_actual' | 'audit_exports';
+type ReportSubTab = 'track04_eval' | 'finance_ops' | 'cash_liquidity' | 'budget_actual' | 'audit_exports';
 
 export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
   const reportRef = useRef<HTMLDivElement>(null);
@@ -396,7 +397,7 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
   const exceptionExposureData = allExceptionCategories
     .map(type => ({
       rawType: type,
-      name: type.replace(/_/g, ' '),
+      name: String(type || '').replace(/_/g, ' '),
       exposure: typeExposureMap.get(type) || 0,
       count: typeCountMap.get(type) || 0
     }))
@@ -407,22 +408,22 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
   // CHART 4: SETTLEMENT & BANK CREDIT TIMING DISTRIBUTION
   // ==========================================
   const timingDistributionData = [
-    { name: 'Same Day', count: settlementTimingSummary.sameDay, color: '#9EEB75', target: 'Fastest' },
-    { name: 'T+1 Day', count: settlementTimingSummary.tPlus1, color: '#3498DB', target: 'Standard' },
-    { name: 'T+2 Days', count: settlementTimingSummary.tPlus2, color: '#F39C12', target: 'Standard' },
-    { name: 'T+3+ Days', count: settlementTimingSummary.tPlus3OrMore, color: '#E74C3C', target: 'Extended' }
+    { name: 'Same Day', count: settlementTimingSummary?.sameDay || 0, color: '#9EEB75', target: 'Fastest' },
+    { name: 'T+1 Day', count: settlementTimingSummary?.tPlus1 || 0, color: '#3498DB', target: 'Standard' },
+    { name: 'T+2 Days', count: settlementTimingSummary?.tPlus2 || 0, color: '#F39C12', target: 'Standard' },
+    { name: 'T+3+ Days', count: settlementTimingSummary?.tPlus3OrMore || 0, color: '#E74C3C', target: 'Extended' }
   ];
 
   // ==========================================
   // CHART 5: PAYMENT METHOD PERFORMANCE & MATCH RATES
   // ==========================================
-  const methodPerformanceData = paymentMethodSummary.map(m => ({
+  const methodPerformanceData = (paymentMethodSummary || []).map(m => ({
     name: m.paymentMethod,
-    matchRate: parseFloat(m.matchRate.toFixed(1)),
-    settlementValue: Math.round(m.settlementValue),
-    transactions: m.transactionCount,
-    fullyMatched: m.fullyMatched,
-    exceptions: m.exceptionCount
+    matchRate: parseFloat((m.matchRate || 0).toFixed(1)),
+    settlementValue: Math.round(m.settlementValue || 0),
+    transactions: m.transactionCount || 0,
+    fullyMatched: m.fullyMatched || 0,
+    exceptions: m.exceptionCount || 0
   }));
 
   // ==========================================
@@ -430,27 +431,28 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
   // ==========================================
   const historyTrendData = runHistory && runHistory.length > 0
     ? [...runHistory].reverse().map((run, idx) => ({
-        batchName: `Run ${idx + 1} (${run.batchId.slice(-4)})`,
+        batchName: `Run ${idx + 1} (${String(run.batchId || '').slice(-4)})`,
         batchId: run.batchId,
-        matchRate: parseFloat(run.matchRate.toFixed(1)),
-        exposure: Math.round(run.totalExceptionExposure),
-        confirmedCash: Math.round(run.confirmedBankCash),
-        batchSize: run.batchSize,
-        exceptions: run.transactionsWithExceptions,
-        date: new Date(run.processedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        matchRate: parseFloat((run.matchRate || 0).toFixed(1)),
+        exposure: Math.round(run.totalExceptionExposure || 0),
+        confirmedCash: Math.round(run.confirmedBankCash || 0),
+        batchSize: run.batchSize || 0,
+        exceptions: run.transactionsWithExceptions || 0,
+        date: run.processedAt ? new Date(run.processedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'
       }))
     : [{
-        batchName: `Current (${latestResult.batchId.slice(-4)})`,
-        batchId: latestResult.batchId,
-        matchRate: parseFloat(latestResult.matchRate.toFixed(1)),
-        exposure: Math.round(amountSummary.totalExceptionExposure),
-        confirmedCash: Math.round(amountSummary.bankCreditedValue),
-        batchSize: latestResult.batchSize,
-        exceptions: latestResult.transactionsWithExceptions,
-        date: new Date(latestResult.processedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        batchName: `Current (${String(latestResult?.batchId || '').slice(-4)})`,
+        batchId: latestResult?.batchId || 'BATCH-001',
+        matchRate: parseFloat((latestResult?.matchRate || 0).toFixed(1)),
+        exposure: Math.round(amountSummary?.totalExceptionExposure || 0),
+        confirmedCash: Math.round(amountSummary?.bankCreditedValue || 0),
+        batchSize: latestResult?.batchSize || 0,
+        exceptions: latestResult?.transactionsWithExceptions || 0,
+        date: latestResult?.processedAt ? new Date(latestResult.processedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Current'
       }];
 
   const subTabs = [
+    { id: 'track04_eval' as ReportSubTab, label: 'Track 04 Buildathon Evaluation', icon: Trophy },
     { id: 'finance_ops' as ReportSubTab, label: 'Finance Operations', icon: Activity },
     { id: 'cash_liquidity' as ReportSubTab, label: 'Cash & Liquidity', icon: DollarSign },
     { id: 'budget_actual' as ReportSubTab, label: 'Budget vs Actual', icon: PieChartIcon },
@@ -549,6 +551,13 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
       {/* Stale Warning Banner */}
       <StaleWarningBanner onRunRecon={onNavigateToRecon} />
 
+      {/* SUB-VIEW 0: TRACK 04 BUILDATHON EVALUATION */}
+      {activeSubTab === 'track04_eval' && (
+        <div className="animate-fade-in">
+          <Track04EvaluationSection onSelectTransaction={onNavigateToRecon} />
+        </div>
+      )}
+
       {/* SUB-VIEW 1: FINANCE OPERATIONS */}
       {activeSubTab === 'finance_ops' && (
         <div ref={reportRef} className="space-y-8 bg-neu-base p-6 sm:p-10 rounded-[36px] shadow-neu-inset animate-fade-in">
@@ -578,7 +587,7 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
               <div className="p-2.5 bg-neu-base shadow-neu-inset rounded-xl">
                 <span className="text-[10px] text-neu-muted block uppercase tracking-wider">Integrity</span>
                 <span className={latestResult.overallIntegrityStatus === 'pass' ? 'text-[#2E7D32]' : 'text-[#D68910]'}>
-                  {latestResult.overallIntegrityStatus.toUpperCase()}
+                  {String(latestResult.overallIntegrityStatus || 'PASS').toUpperCase()}
                 </span>
               </div>
               <div className="p-2.5 bg-neu-base shadow-neu-inset rounded-xl">
@@ -1171,15 +1180,33 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
                 </button>
               </div>
 
+              {/* Track 04 Evaluation Export Card */}
+              <div className="p-6 bg-neu-base rounded-[24px] shadow-neu-inset flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="w-10 h-10 rounded-2xl bg-neu-base shadow-neu-extruded flex items-center justify-center text-neu-accent mb-3">
+                    <Trophy className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-base font-bold text-neu-primary">Track 04 Buildathon Report</h4>
+                  <p className="text-xs text-neu-muted mt-1">Full evaluation scorecard against synthetic ground truth, accuracy metrics, and honest exception ledger.</p>
+                </div>
+                <button
+                  onClick={() => setActiveSubTab('track04_eval')}
+                  className="w-full py-3 bg-neu-base shadow-neu-extruded hover:shadow-neu-extruded-hover active:shadow-neu-inset rounded-2xl font-bold text-xs text-neu-primary flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <Trophy className="w-4 h-4 text-neu-accent" />
+                  View & Download Track 04 Report
+                </button>
+              </div>
+
               {/* Cryptographic Audit Bundle */}
-              <div className="p-6 bg-neu-base rounded-[24px] shadow-neu-inset flex flex-col justify-between space-y-4 lg:col-span-2">
+              <div className="p-6 bg-neu-base rounded-[24px] shadow-neu-inset flex flex-col justify-between space-y-4">
                 <div>
                   <div className="w-10 h-10 rounded-2xl bg-neu-base shadow-neu-extruded flex items-center justify-center text-[#9B59B6] mb-3">
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                   <h4 className="text-base font-bold text-neu-primary">Full Audit Trail Bundle</h4>
                   <p className="text-xs text-neu-muted mt-1">
-                    Complete cryptographic bundle with batch ID, rules fingerprint, dataset hash, denominator validation, and balance sheet trace.
+                    Complete cryptographic bundle with batch ID, rules fingerprint, dataset hash, and balance sheet trace.
                   </p>
                 </div>
                 <button

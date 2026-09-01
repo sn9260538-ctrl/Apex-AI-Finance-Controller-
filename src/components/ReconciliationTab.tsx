@@ -3,18 +3,22 @@ import { useFinanceData } from '../context/FinanceDataContext';
 import { 
   FileSearch, UploadCloud, PlayCircle, CheckCircle2, AlertTriangle, 
   Download, FileText, ChevronDown, ChevronRight, Save, Database, Trash2,
-  ShieldCheck, ArrowRight, Activity, X, RefreshCw
+  ShieldCheck, ArrowRight, Activity, X, RefreshCw, Trophy, Layers, HelpCircle
 } from 'lucide-react';
 import Papa from 'papaparse';
+import { sanitizeExportRows } from '../lib/csvSecurity';
 import { Invoice, Payment, Settlement, BankCredit } from '../types';
 import StaleWarningBanner from './StaleWarningBanner';
 import IntegrityCheckCard from './IntegrityCheckCard';
 import ControllerActionQueue from './ControllerActionQueue';
+import Track04EvaluationSection from './Track04EvaluationSection';
 
 interface ReconciliationTabProps {
   searchQuery?: string;
   onViewOverview?: () => void;
 }
+
+type ReconSubView = 'buildathon_eval' | 'ledger' | 'action_queue';
 
 export default function ReconciliationTab({ searchQuery = "", onViewOverview }: ReconciliationTabProps) {
   const { 
@@ -29,6 +33,7 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [activeSubView, setActiveSubView] = useState<ReconSubView>('buildathon_eval');
 
   const reportRef = useRef<HTMLDivElement>(null);
   const invoiceInputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +92,7 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
   const handleLoadDemo = () => {
     resetDemoData();
     resetFileInputs();
-    setStatusMessage("Demo dataset loaded (25 Invoices, 25 Payments, 25 Settlements, 25 Bank Credits).");
+    setStatusMessage("Demo dataset loaded (100-record synthetic batch for Track 04 Buildathon evaluation).");
     setTimeout(() => setStatusMessage(null), 4000);
   };
 
@@ -104,7 +109,7 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
         }
         return prev + 2;
       });
-    }, 100);
+    }, 80);
 
     setTimeout(() => {
       clearInterval(interval);
@@ -119,7 +124,7 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
       setProgress(0);
       setShowSuccessBanner(true);
       setTimeout(() => setShowSuccessBanner(false), 5000);
-    }, 5000);
+    }, 4000);
   };
 
   const exportJSON = () => {
@@ -138,41 +143,29 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
       auditMetadata: latestResult.auditMetadata,
       companyProfile,
       rulesConfiguration: rules,
-      kpiResults: {
+      reconciliationMetrics: {
+        batchId: latestResult.batchId,
+        batchSize: latestResult.batchSize,
         matchRate: latestResult.matchRate,
         exceptionRate: latestResult.exceptionRate,
         fullyMatched: latestResult.fullyMatched,
         partialMatches: latestResult.partialMatches,
         unmatched: latestResult.unmatched,
         transactionsWithExceptions: latestResult.transactionsWithExceptions,
-        totalExceptionItems: latestResult.totalExceptionItems
+        totalExceptionItems: latestResult.totalExceptionItems,
       },
-      cashPosition: {
-        confirmedBankCash: latestResult.amountSummary.bankCreditedValue,
-        pendingSettlementValue: latestResult.amountSummary.pendingSettlementValue,
-        totalExceptionExposure: latestResult.amountSummary.totalExceptionExposure
-      },
-      settlementSummary: latestResult.amountSummary,
-      timingSummaries: latestResult.settlementTimingSummary,
-      controllerActionQueue: latestResult.controllerActionQueue,
+      amountSummary: latestResult.amountSummary,
+      settlementTimingSummary: latestResult.settlementTimingSummary,
+      paymentMethodSummary: latestResult.paymentMethodSummary,
       exceptions: latestResult.exceptions,
-      dataQualityWarnings: latestResult.dataQualityWarnings,
-      complianceScreening: latestResult.complianceScreening,
-      recommendedActions: latestResult.exceptions.map(e => ({ 
-        id: e.id, 
-        transactionId: e.transactionId,
-        action: e.recommendedAction,
-        reason: e.actionReason,
-        thresholdExceeded: e.thresholdExceeded
-      })),
-      disclaimer: "Prototype finance-operations screening only. This application does not replace official government portals, bank records, payment-gateway settlement terms, qualified accountants, auditors, tax advisers, or legal advisers. Verify all thresholds, rates, eligibility conditions, filings, and settlement obligations before acting."
+      disclaimer: "Prototype finance-operations screening only. This application does not replace official government portals, bank records, payment-gateway settlement terms, qualified accountants, auditors, tax advisers, or legal advisers."
     };
     
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `reconciliation-${latestResult.batchId}.json`;
+    a.download = `reconciliation-audit-${latestResult.batchId}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -182,14 +175,14 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
     const exportItems = latestResult.exceptions.map(e => ({
       'Exception ID': e.id,
       'Transaction ID': e.transactionId,
-      'Source IDs': (e.sourceRecordIds || []).join('; '),
+      'Source Record IDs': (e.sourceRecordIds || []).join('; '),
       'Exception Type': e.type,
       'Books Amount': e.booksAmount,
       'Payment Amount': e.paymentAmount,
       'Settlement Amount': e.settlementAmount,
       'Bank Amount': e.bankAmount,
-      'Difference': e.difference,
-      'Materiality Threshold': e.materialityThreshold,
+      'Difference (INR)': e.difference,
+      'Materiality Threshold (INR)': e.materialityThreshold,
       'Threshold Exceeded': e.thresholdExceeded ? 'Yes' : 'No',
       'Action Reason': e.actionReason,
       'Payment Date': e.paymentDate,
@@ -217,13 +210,14 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
   };
 
   // Filter exceptions if search query passed
-  const filteredExceptions = latestResult ? latestResult.exceptions.filter(e => {
+  const filteredExceptions = latestResult ? (latestResult.exceptions || []).filter(e => {
     if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
+    const q = String(searchQuery || '').toLowerCase().trim();
+    if (!q) return true;
     return (
-      e.transactionId.toLowerCase().includes(q) ||
-      e.type.toLowerCase().includes(q) ||
-      (e.sourceRecordIds || []).some(id => id.toLowerCase().includes(q))
+      (e.transactionId && String(e.transactionId).toLowerCase().includes(q)) ||
+      (e.type && String(e.type).toLowerCase().includes(q)) ||
+      (Array.isArray(e.sourceRecordIds) && e.sourceRecordIds.some(id => id && String(id).toLowerCase().includes(q)))
     );
   }) : [];
 
@@ -275,11 +269,11 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
             
             <div className="text-center">
               <h1 className="text-4xl font-display font-extrabold tracking-tight text-neu-primary">Apex</h1>
-              <p className="text-sm text-neu-muted font-bold tracking-widest uppercase mt-2">Controller</p>
+              <p className="text-sm text-neu-muted font-bold tracking-widest uppercase mt-2">AI Finance Controller</p>
             </div>
 
             <div className="mt-4 flex flex-col items-center w-64 gap-6">
-               <p className="text-sm font-bold text-neu-primary animate-pulse">Running deterministic match...</p>
+               <p className="text-sm font-bold text-neu-primary animate-pulse">Running deterministic 4-way match...</p>
                <div className="w-full h-4 bg-neu-base shadow-neu-inset rounded-full overflow-hidden relative">
                   <div 
                     className="absolute inset-y-0 left-0 bg-neu-accent transition-all duration-100 ease-linear shadow-neu-extruded-sm"
@@ -296,128 +290,102 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-display font-bold text-neu-primary">Reconciliation Engine</h2>
-          <p className="text-sm text-neu-muted mt-1">Upload CSVs or load demo data to run deterministic 4-way matching.</p>
+          <p className="text-sm text-neu-muted mt-1">
+            Deterministic 4-way matching loop (Invoice → Payment → Settlement → Bank Credit) with complete Buildathon evaluation.
+          </p>
         </div>
-        <div className="flex gap-4 flex-wrap">
-          <button 
-            onClick={handleClearAllData} 
-            className="px-6 py-3 bg-neu-base shadow-neu-extruded hover:shadow-neu-extruded-hover active:shadow-neu-inset rounded-full font-bold text-sm text-[#E74C3C] flex items-center gap-2 transition-all"
-            title="Clear all datasets, uploaded files, and reconciliation results"
-          >
-            <Trash2 className="w-4 h-4" />
-            Clear Data
-          </button>
-          <button 
-            onClick={handleLoadDemo} 
-            className="px-6 py-3 bg-neu-base shadow-neu-extruded hover:shadow-neu-extruded-hover active:shadow-neu-inset rounded-full font-bold text-sm text-neu-primary flex items-center gap-2 transition-all"
-            title="Load synthetic enterprise reconciliation records"
-          >
-            <Database className="w-4 h-4" />
-            Load Demo Data
-          </button>
+        
+        <div className="flex items-center gap-3 flex-wrap">
+          {latestResult && isReconciliationStale && (
+            <span className="px-3 py-1 bg-[#F39C12]/20 text-[#D68910] text-xs font-bold rounded-full border border-[#F39C12]/30">
+              Previous reconciliation result — rerun required
+            </span>
+          )}
+
+          <div className="flex gap-2">
+            <button 
+              onClick={handleLoadDemo} 
+              className="px-4 py-2 bg-neu-base shadow-neu-extruded hover:shadow-neu-extruded-sm active:shadow-neu-inset rounded-full font-bold text-xs text-neu-primary flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Database className="w-4 h-4 text-neu-accent" />
+              Load Synthetic Demo Data (100 Records)
+            </button>
+
+            {hasAnyData && (
+              <button 
+                onClick={handleClearAllData} 
+                className="px-4 py-2 bg-neu-base shadow-neu-extruded hover:shadow-neu-extruded-sm active:shadow-neu-inset rounded-full font-bold text-xs text-[#E74C3C] flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear All Data
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Status Notice Toast / Banner */}
+      <StaleWarningBanner />
+
+      {/* Status / Flash Notification */}
       {statusMessage && (
-        <div className="p-4 bg-neu-base shadow-neu-inset border border-neu-muted/20 rounded-2xl flex items-center justify-between animate-fade-in">
-          <div className="flex items-center gap-3">
-            <Activity className="w-5 h-5 text-neu-accent" />
-            <span className="text-sm font-bold text-neu-primary">{statusMessage}</span>
-          </div>
-          <button onClick={() => setStatusMessage(null)} className="text-neu-muted hover:text-neu-primary p-1">
-            <X className="w-4 h-4" />
-          </button>
+        <div className="p-4 bg-neu-base rounded-2xl shadow-neu-inset flex items-center gap-3 animate-fade-in border border-neu-accent/30 text-xs font-bold text-neu-primary">
+          <CheckCircle2 className="w-4 h-4 text-neu-accent shrink-0" />
+          <span>{statusMessage}</span>
         </div>
       )}
 
-      {/* Stale Warning Banner */}
-      <StaleWarningBanner onRunRecon={handleRun} />
-
-      {showSuccessBanner && (
-        <div className="p-4 bg-[#9EEB75]/20 text-[#0F2F28] border border-[#9EEB75] rounded-2xl flex items-center justify-between shadow-neu-extruded-sm animate-fade-in">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-[#2E7D32]" />
-            <span className="font-bold text-sm">Reconciliation completed. Dashboard, reports, cash forecast, and compliance screening have been updated.</span>
-          </div>
-          {onViewOverview && (
-            <button onClick={onViewOverview} className="px-4 py-2 bg-neu-base shadow-neu-extruded hover:shadow-neu-extruded-hover active:shadow-neu-inset rounded-full text-xs font-bold text-neu-primary">
-              View Updated Overview
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Upload Section - 4 File Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {uploadCards.map((card) => {
-          const isLoaded = card.count > 0;
-          return (
-            <div 
-              key={card.type} 
-              className={`p-6 rounded-[24px] shadow-neu-extruded flex flex-col justify-between transition-all relative ${
-                isLoaded ? 'bg-[#9EEB75]/10 border border-[#9EEB75]/40' : 'bg-neu-base border border-transparent'
-              }`}
-            >
-              <div>
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <p className="text-sm font-bold text-neu-primary">{card.label} CSV</p>
-                    <p className="text-[11px] font-medium text-neu-muted truncate max-w-[130px]" title={card.fileName || 'No file selected'}>
-                      {card.fileName || 'No file selected'}
-                    </p>
-                  </div>
-                  {isLoaded ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-7 h-7 rounded-full bg-[#9EEB75] flex items-center justify-center text-[#0F2F28] shadow-neu-extruded-sm">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </span>
-                      <button
-                        onClick={() => handleRemoveSingleFile(card.type)}
-                        title={`Clear ${card.label} file`}
-                        className="w-7 h-7 rounded-full bg-neu-base shadow-neu-extruded hover:shadow-neu-inset flex items-center justify-center text-[#E74C3C] transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="w-7 h-7 rounded-full bg-neu-base shadow-neu-inset flex items-center justify-center text-neu-muted">
-                      <UploadCloud className="w-4 h-4" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="my-2">
-                  <p className="text-2xl font-display font-extrabold text-neu-primary">
-                    {card.count} <span className="text-xs font-bold text-neu-muted uppercase tracking-wider">rows</span>
-                  </p>
-                </div>
+      {/* 4-Way CSV Upload Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {uploadCards.map((card) => (
+          <div key={card.type} className="p-6 bg-neu-base rounded-[28px] shadow-neu-extruded flex flex-col justify-between relative group">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-bold text-neu-muted uppercase tracking-widest">{card.label}</span>
+                <span className={`w-3 h-3 rounded-full ${card.count > 0 ? 'bg-[#9EEB75]' : 'bg-neu-muted/40'}`}></span>
               </div>
+              <p className="text-3xl font-display font-extrabold text-neu-primary">
+                {card.count} <span className="text-sm font-medium text-neu-muted">records</span>
+              </p>
+              {card.fileName ? (
+                <p className="text-xs text-neu-accent font-medium mt-1 truncate" title={card.fileName}>
+                  {card.fileName}
+                </p>
+              ) : (
+                <p className="text-xs text-neu-muted mt-1">
+                  {card.count > 0 ? `${dataMode}` : 'No file loaded'}
+                </p>
+              )}
+            </div>
 
-              <div className="mt-4 pt-3 border-t border-neu-muted/15">
+            <div className="mt-6 flex items-center gap-2">
+              <label className="flex-1 px-4 py-2.5 bg-neu-base shadow-neu-extruded-sm hover:shadow-neu-inset rounded-full font-bold text-xs text-neu-primary flex items-center justify-center gap-2 transition-all cursor-pointer">
+                <UploadCloud className="w-4 h-4 text-neu-muted" />
+                Upload CSV
                 <input 
                   type="file" 
-                  ref={card.ref}
                   accept=".csv" 
+                  ref={card.ref} 
                   onChange={(e) => handleFileUpload(e, card.type)} 
                   className="hidden" 
-                  id={`file-input-${card.type}`}
                 />
-                <label 
-                  htmlFor={`file-input-${card.type}`}
-                  className="px-4 py-2.5 bg-neu-base shadow-neu-extruded-sm hover:shadow-neu-inset active:shadow-neu-inset rounded-xl text-xs font-bold text-neu-primary w-full flex items-center justify-center gap-2 cursor-pointer transition-all text-center"
+              </label>
+
+              {card.count > 0 && (
+                <button
+                  onClick={() => handleRemoveSingleFile(card.type)}
+                  className="w-9 h-9 bg-neu-base shadow-neu-extruded-sm hover:shadow-neu-inset rounded-full flex items-center justify-center text-neu-muted hover:text-[#E74C3C] transition-all cursor-pointer shrink-0"
+                  title={`Clear ${card.label}`}
                 >
-                  <UploadCloud className="w-3.5 h-3.5 text-neu-muted" />
-                  {isLoaded ? 'Replace CSV' : 'Select CSV File'}
-                </label>
-              </div>
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
-      {/* Run Reconciliation Button */}
-      <div className="flex flex-col items-center justify-center mt-8 gap-3 relative">
+      {/* Run Reconciliation Action Button */}
+      <div className="flex flex-col items-center justify-center mt-6 gap-3 relative">
         <button 
           onClick={handleRun}
           disabled={isProcessing || !hasAnyData}
@@ -439,7 +407,7 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
 
         {!hasAnyData && (
           <p className="text-xs font-bold text-neu-muted">
-            Upload CSV files above or click <strong className="text-neu-primary">Load Demo Data</strong> to enable reconciliation.
+            Upload CSV files above or click <strong className="text-neu-primary">Load Synthetic Demo Data</strong> to run 4-way matching.
           </p>
         )}
       </div>
@@ -456,179 +424,223 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
             </h3>
             <p className="text-sm text-neu-muted">
               {hasAnyData 
-                ? "Your data files are ready. Click 'Run Reconciliation' above to execute 4-way deterministic matching and diagnose discrepancies."
-                : "You have cleared all datasets. You can select your own CSV files for Invoices, Payments, Settlements, and Bank Credits, or click 'Load Demo Data' to load synthetic enterprise test transactions."}
+                ? "Your data files are ready. Click 'Run Reconciliation' above to execute 4-way deterministic matching and evaluate against Track 04 standards."
+                : "You have cleared all datasets. You can select your own CSV files for Invoices, Payments, Settlements, and Bank Credits, or click 'Load Synthetic Demo Data' to load the 100-record synthetic batch."}
             </p>
           </div>
           {!hasAnyData && (
             <button 
               onClick={handleLoadDemo} 
-              className="px-6 py-3 bg-neu-base shadow-neu-extruded hover:shadow-neu-inset rounded-full text-xs font-bold text-neu-primary flex items-center gap-2"
+              className="px-6 py-3 bg-neu-base shadow-neu-extruded hover:shadow-neu-inset rounded-full text-xs font-bold text-neu-primary flex items-center gap-2 cursor-pointer"
             >
               <Database className="w-4 h-4 text-neu-accent" />
-              Load Synthetic Demo Data
+              Load Synthetic Demo Data (100 Records)
             </button>
           )}
         </div>
       )}
 
-      {/* Controller Action Queue */}
+      {/* Sub-Navigation Switcher when Result is Ready */}
       {latestResult && (
-        <ControllerActionQueue onSelectTransaction={(txnId) => setExpandedRow(latestResult.exceptions.find(e => e.transactionId === txnId)?.id || null)} />
-      )}
+        <div className="space-y-8 animate-fade-in pt-4">
+          <div className="flex items-center justify-center gap-3 p-1.5 bg-neu-base rounded-full shadow-neu-inset w-fit mx-auto border border-neu-muted/20">
+            <button
+              onClick={() => setActiveSubView('buildathon_eval')}
+              className={`px-5 py-2.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeSubView === 'buildathon_eval'
+                  ? 'bg-neu-primary text-neu-base shadow-neu-extruded-sm'
+                  : 'text-neu-muted hover:text-neu-primary'
+              }`}
+            >
+              <Trophy className="w-4 h-4 text-neu-accent" />
+              Track 04 Buildathon Evaluation
+            </button>
 
-      {/* Integrity Checks Card */}
-      {latestResult && (
-        <IntegrityCheckCard checks={latestResult.integrityChecks} overallStatus={latestResult.overallIntegrityStatus} />
-      )}
+            <button
+              onClick={() => setActiveSubView('ledger')}
+              className={`px-5 py-2.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeSubView === 'ledger'
+                  ? 'bg-neu-primary text-neu-base shadow-neu-extruded-sm'
+                  : 'text-neu-muted hover:text-neu-primary'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Detailed Ledger & Exceptions
+            </button>
 
-      {/* Main Reconciliation Result Panel */}
-      {latestResult && (
-        <div ref={reportRef} className="space-y-8 bg-neu-base rounded-[32px] shadow-neu-inset p-8 mt-12 animate-fade-in">
-          <div className="flex flex-col sm:flex-row justify-between items-center pb-6 border-b border-neu-muted/20 gap-4">
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h3 className="text-xl font-display font-extrabold text-neu-primary">Reconciliation Result</h3>
-                {isReconciliationStale && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#F39C12]/20 text-[#D68910]">
-                    Previous reconciliation result — rerun required
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-neu-muted mt-1">
-                Batch ID: {latestResult.batchId} • {latestResult.processingMode} • Materiality: ₹{latestResult.materialityThreshold.toLocaleString('en-IN')}
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={exportCSV} className="px-4 py-2 bg-neu-base shadow-neu-extruded-sm hover:shadow-neu-inset rounded-full font-bold text-xs text-neu-primary flex items-center gap-2">
-                <FileText className="w-4 h-4" /> CSV
-              </button>
-              <button onClick={exportJSON} className="px-4 py-2 bg-neu-base shadow-neu-extruded-sm hover:shadow-neu-inset rounded-full font-bold text-xs text-neu-primary flex items-center gap-2">
-                <Download className="w-4 h-4" /> JSON
-              </button>
-            </div>
+            <button
+              onClick={() => setActiveSubView('action_queue')}
+              className={`px-5 py-2.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeSubView === 'action_queue'
+                  ? 'bg-neu-primary text-neu-base shadow-neu-extruded-sm'
+                  : 'text-neu-muted hover:text-neu-primary'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              Controller Action Queue
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-             <div className="p-4 bg-neu-base shadow-neu-extruded rounded-2xl">
-               <p className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-1">Match Rate</p>
-               <p className="text-3xl font-display font-extrabold text-[#9EEB75]">{latestResult.matchRate.toFixed(1)}%</p>
-             </div>
-             <div className="p-4 bg-neu-base shadow-neu-extruded rounded-2xl">
-               <p className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-1">Exceptions</p>
-               <p className="text-3xl font-display font-extrabold text-[#E74C3C]">{latestResult.transactionsWithExceptions}</p>
-             </div>
-             <div className="p-4 bg-neu-base shadow-neu-extruded rounded-2xl">
-               <p className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-1">Exception Exp.</p>
-               <p className="text-3xl font-display font-extrabold text-[#F39C12]">₹{(latestResult.amountSummary.totalExceptionExposure/1000).toFixed(1)}k</p>
-             </div>
-             <div className="p-4 bg-neu-base shadow-neu-extruded rounded-2xl">
-               <p className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-1">Fully Matched</p>
-               <p className="text-3xl font-display font-extrabold text-neu-primary">{latestResult.fullyMatched} / {latestResult.batchSize}</p>
-             </div>
-          </div>
+          {/* VIEW 1: Track 04 Buildathon Evaluation Mode */}
+          {activeSubView === 'buildathon_eval' && (
+            <Track04EvaluationSection 
+              onSelectTransaction={(txId) => {
+                setActiveSubView('ledger');
+                const exc = latestResult.exceptions.find(e => e.transactionId === txId);
+                if (exc) setExpandedRow(exc.id);
+              }} 
+            />
+          )}
 
-          <div className="mt-8">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-bold text-neu-primary">Exceptions & Anomalies</h4>
-              <span className="text-xs font-bold text-neu-muted">
-                Showing {filteredExceptions.length} exception{filteredExceptions.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-            <div className="overflow-x-auto rounded-[24px] shadow-neu-extruded bg-neu-base">
-              <table className="w-full min-w-[800px]">
-                <thead>
-                  <tr className="border-b border-neu-muted/20 bg-neu-base/50">
-                    <th className="text-left py-4 px-6 font-bold text-xs uppercase tracking-widest text-neu-muted">Transaction ID</th>
-                    <th className="text-left py-4 px-6 font-bold text-xs uppercase tracking-widest text-neu-muted">Type</th>
-                    <th className="text-left py-4 px-6 font-bold text-xs uppercase tracking-widest text-neu-muted">Difference</th>
-                    <th className="text-left py-4 px-6 font-bold text-xs uppercase tracking-widest text-neu-muted">Action</th>
-                    <th className="px-6"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neu-muted/10">
-                  {filteredExceptions.map((exc) => (
-                    <React.Fragment key={exc.id}>
-                      <tr className="hover:bg-neu-base/50 transition-colors cursor-pointer" onClick={() => setExpandedRow(expandedRow === exc.id ? null : exc.id)}>
-                        <td className="py-4 px-6 text-sm font-bold text-neu-primary font-mono">{exc.transactionId}</td>
-                        <td className="py-4 px-6">
-                          <span className="px-3 py-1 bg-neu-base shadow-neu-inset rounded-full text-xs font-bold text-[#E74C3C]">
-                            {exc.type.replace(/_/g, ' ')}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6 text-sm font-bold text-neu-primary">
-                          {exc.difference !== 0 ? `₹${Math.abs(exc.difference).toLocaleString('en-IN')}` : '-'}
-                        </td>
-                        <td className="py-4 px-6">
-                           <span className={`text-xs font-bold uppercase px-2.5 py-1 rounded-full shadow-neu-inset ${
-                             exc.recommendedAction === 'escalate' 
-                               ? 'text-[#E74C3C]' 
-                               : exc.recommendedAction === 'manual_review' 
-                                 ? 'text-[#F39C12]' 
-                                 : 'text-[#2E7D32]'
-                           }`}>
-                             {exc.recommendedAction.replace(/_/g, ' ')}
-                           </span>
-                        </td>
-                        <td className="py-4 px-6 text-right">
-                          {expandedRow === exc.id ? <ChevronDown className="w-5 h-5 text-neu-muted inline" /> : <ChevronRight className="w-5 h-5 text-neu-muted inline" />}
-                        </td>
-                      </tr>
-                      {expandedRow === exc.id && (
-                        <tr className="bg-neu-base shadow-neu-inset">
-                          <td colSpan={5} className="py-6 px-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                              <div className="space-y-4">
-                                <div>
-                                  <h5 className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-1">Diagnostic & Routing</h5>
-                                  <p className="text-sm text-neu-primary font-medium">{exc.details}</p>
-                                  <p className="text-xs text-neu-muted mt-1">Rule Applied: {exc.ruleApplied} • Match Confidence: {exc.deterministicMatchConfidence}</p>
-                                </div>
-                                <div className="p-3 bg-neu-base shadow-neu-extruded-sm rounded-xl text-xs space-y-1">
-                                  <span className="font-bold text-neu-muted uppercase text-[10px]">Action Rationalization</span>
-                                  <p className="text-neu-primary font-medium">{exc.actionReason}</p>
-                                  <div className="flex items-center gap-4 pt-1 text-[11px] text-neu-muted">
-                                    <span>Materiality Threshold: ₹{exc.materialityThreshold.toLocaleString('en-IN')}</span>
-                                    <span>Threshold Exceeded: <strong className={exc.thresholdExceeded ? 'text-[#E74C3C]' : 'text-[#2E7D32]'}>{exc.thresholdExceeded ? 'Yes' : 'No'}</strong></span>
-                                  </div>
-                                </div>
-                                <div className="flex gap-4 pt-2">
-                                  <div><span className="text-xs text-neu-muted block">Books</span><span className="text-sm font-bold">₹{exc.booksAmount}</span></div>
-                                  <div><span className="text-xs text-neu-muted block">Payment</span><span className="text-sm font-bold">₹{exc.paymentAmount}</span></div>
-                                  <div><span className="text-xs text-neu-muted block">Settlement</span><span className="text-sm font-bold">₹{exc.settlementAmount}</span></div>
-                                  <div><span className="text-xs text-neu-muted block">Bank</span><span className="text-sm font-bold">₹{exc.bankAmount}</span></div>
-                                </div>
-                              </div>
-                              <div className="flex flex-col">
-                                <h5 className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-3">Internal Audit Note</h5>
-                                <textarea 
-                                  className="flex-1 w-full min-h-[100px] p-4 rounded-2xl bg-neu-base shadow-neu-inset text-sm font-medium text-neu-primary resize-none focus:outline-none focus:ring-2 focus:ring-neu-accent"
-                                  placeholder="Add an internal audit note..."
-                                  value={notes[exc.id] || ''}
-                                  onChange={(e) => saveNote(exc.id, e.target.value)}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
+          {/* VIEW 2: Detailed Ledger & Exceptions Table */}
+          {activeSubView === 'ledger' && (
+            <div className="space-y-8 animate-fade-in">
+              <IntegrityCheckCard checks={latestResult.integrityChecks} overallStatus={latestResult.overallIntegrityStatus} />
+
+              <div ref={reportRef} className="space-y-8 bg-neu-base rounded-[32px] shadow-neu-inset p-8">
+                <div className="flex flex-col sm:flex-row justify-between items-center pb-6 border-b border-neu-muted/20 gap-4">
+                  <div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h3 className="text-xl font-display font-extrabold text-neu-primary">Reconciliation Result Ledger</h3>
+                      {isReconciliationStale && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#F39C12]/20 text-[#D68910]">
+                          Previous reconciliation result — rerun required
+                        </span>
                       )}
-                    </React.Fragment>
-                  ))}
-                  {filteredExceptions.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-neu-muted font-bold">No exceptions found matching your criteria.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    </div>
+                    <p className="text-sm text-neu-muted mt-1">
+                      Batch ID: {latestResult.batchId} • {latestResult.processingMode} • Materiality: ₹{latestResult.materialityThreshold.toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={exportCSV} className="px-4 py-2 bg-neu-base shadow-neu-extruded-sm hover:shadow-neu-inset rounded-full font-bold text-xs text-neu-primary flex items-center gap-2 cursor-pointer">
+                      <FileText className="w-4 h-4" /> CSV
+                    </button>
+                    <button onClick={exportJSON} className="px-4 py-2 bg-neu-base shadow-neu-extruded-sm hover:shadow-neu-inset rounded-full font-bold text-xs text-neu-primary flex items-center gap-2 cursor-pointer">
+                      <Download className="w-4 h-4" /> JSON
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                   <div className="p-4 bg-neu-base shadow-neu-extruded rounded-2xl">
+                     <p className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-1">Match Rate</p>
+                     <p className="text-3xl font-display font-extrabold text-[#9EEB75]">{latestResult.matchRate.toFixed(1)}%</p>
+                   </div>
+                   <div className="p-4 bg-neu-base shadow-neu-extruded rounded-2xl">
+                     <p className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-1">Exceptions</p>
+                     <p className="text-3xl font-display font-extrabold text-[#E74C3C]">{latestResult.transactionsWithExceptions}</p>
+                   </div>
+                   <div className="p-4 bg-neu-base shadow-neu-extruded rounded-2xl">
+                     <p className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-1">Exception Exp.</p>
+                     <p className="text-3xl font-display font-extrabold text-[#F39C12]">₹{(latestResult.amountSummary.totalExceptionExposure/1000).toFixed(1)}k</p>
+                   </div>
+                   <div className="p-4 bg-neu-base shadow-neu-extruded rounded-2xl">
+                     <p className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-1">Fully Matched</p>
+                     <p className="text-3xl font-display font-extrabold text-neu-primary">{latestResult.fullyMatched} / {latestResult.batchSize}</p>
+                   </div>
+                </div>
+
+                <div className="mt-8">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-lg font-bold text-neu-primary">Exceptions Ledger</h4>
+                    <span className="text-xs font-bold text-neu-muted">
+                      Showing {filteredExceptions.length} exception{filteredExceptions.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto rounded-[24px] shadow-neu-extruded bg-neu-base">
+                    <table className="w-full min-w-[800px]">
+                      <thead>
+                        <tr className="border-b border-neu-muted/20 bg-neu-base/50">
+                          <th className="text-left py-4 px-6 font-bold text-xs uppercase tracking-widest text-neu-muted">Transaction ID</th>
+                          <th className="text-left py-4 px-6 font-bold text-xs uppercase tracking-widest text-neu-muted">Type</th>
+                          <th className="text-left py-4 px-6 font-bold text-xs uppercase tracking-widest text-neu-muted">Difference</th>
+                          <th className="text-left py-4 px-6 font-bold text-xs uppercase tracking-widest text-neu-muted">Action</th>
+                          <th className="px-6"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neu-muted/10">
+                        {filteredExceptions.map((exc) => (
+                          <React.Fragment key={exc.id}>
+                            <tr className="hover:bg-neu-base/50 transition-colors cursor-pointer" onClick={() => setExpandedRow(expandedRow === exc.id ? null : exc.id)}>
+                              <td className="py-4 px-6 text-sm font-bold text-neu-primary font-mono">{exc.transactionId}</td>
+                              <td className="py-4 px-6">
+                                <span className="px-3 py-1 bg-neu-base shadow-neu-inset rounded-full text-xs font-bold text-[#E74C3C]">
+                                  {exc.type.replace(/_/g, ' ')}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6 text-sm font-bold text-neu-primary">
+                                {exc.difference !== 0 ? `₹${exc.difference > 0 ? `+${exc.difference.toFixed(2)}` : exc.difference.toFixed(2)}` : '₹0.00'}
+                              </td>
+                              <td className="py-4 px-6">
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                  exc.recommendedAction === 'auto_resolve' ? 'bg-[#9EEB75]/20 text-[#0F2F28]' :
+                                  exc.recommendedAction === 'escalate' ? 'bg-[#E74C3C]/20 text-[#E74C3C]' :
+                                  'bg-[#F39C12]/20 text-[#D68910]'
+                                }`}>
+                                  {exc.recommendedAction.replace(/_/g, ' ')}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6 text-right">
+                                <div className="w-8 h-8 rounded-full bg-neu-base shadow-neu-extruded-sm flex items-center justify-center ml-auto">
+                                  {expandedRow === exc.id ? <ChevronDown className="w-4 h-4 text-neu-muted" /> : <ChevronRight className="w-4 h-4 text-neu-muted" />}
+                                </div>
+                              </td>
+                            </tr>
+                            {expandedRow === exc.id && (
+                              <tr>
+                                <td colSpan={5} className="p-6 bg-neu-base/40">
+                                  <div className="p-6 bg-neu-base rounded-2xl shadow-neu-inset space-y-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                      <div>
+                                        <p className="text-xs font-bold text-neu-muted">Books Amount</p>
+                                        <p className="text-sm font-bold text-neu-primary mt-1">₹{exc.booksAmount.toLocaleString('en-IN')}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-bold text-neu-muted">Payment Amount</p>
+                                        <p className="text-sm font-bold text-neu-primary mt-1">₹{exc.paymentAmount.toLocaleString('en-IN')}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-bold text-neu-muted">Settlement Net</p>
+                                        <p className="text-sm font-bold text-neu-primary mt-1">₹{exc.settlementAmount.toLocaleString('en-IN')}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-bold text-neu-muted">Bank Credited</p>
+                                        <p className="text-sm font-bold text-neu-primary mt-1">₹{exc.bankAmount.toLocaleString('en-IN')}</p>
+                                      </div>
+                                    </div>
+                                    <div className="pt-4 border-t border-neu-muted/20">
+                                      <p className="text-xs font-bold text-neu-muted uppercase">Reason & Action Context</p>
+                                      <p className="text-sm text-neu-primary mt-1">{exc.actionReason || exc.details}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* VIEW 3: Controller Action Queue */}
+          {activeSubView === 'action_queue' && (
+            <div className="space-y-8 animate-fade-in">
+              <ControllerActionQueue 
+                onSelectTransaction={(txnId) => {
+                  setActiveSubView('ledger');
+                  const exc = latestResult.exceptions.find(e => e.transactionId === txnId);
+                  if (exc) setExpandedRow(exc.id);
+                }} 
+              />
+            </div>
+          )}
         </div>
       )}
-
-      <div className="mt-8 p-4 rounded-xl bg-neu-base shadow-neu-inset text-xs text-neu-muted text-center italic">
-        Prototype finance-operations screening only. This application does not replace official government portals, bank records, payment-gateway settlement terms, qualified accountants, auditors, tax advisers, or legal advisers. Verify all thresholds, rates, eligibility conditions, filings, and settlement obligations before acting.
-      </div>
     </div>
   );
 }

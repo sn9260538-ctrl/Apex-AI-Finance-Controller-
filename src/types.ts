@@ -54,6 +54,93 @@ export type FinalStatus = 'Fully_Matched' | 'Partial_Match' | 'Unmatched';
 export type FinalTransactionStatus = FinalStatus;
 export type DeterministicMatchConfidence = 'High' | 'Medium' | 'Low';
 
+export interface GroundTruthTransaction {
+  transactionId: string;
+  expectedFinalStatus: "Fully_Matched" | "Partial_Match" | "Unmatched";
+  expectedExceptionTypes: ExceptionType[];
+  expectedRecommendedAction: 'auto_resolve' | 'manual_review' | 'escalate' | 'none';
+  expectedMatchable: boolean;
+  expectedReason: string;
+}
+
+export interface BuildathonAccuracyMetrics {
+  isGroundTruthAvailable: boolean;
+  finalStatusAccuracy: number;
+  correctFinalStatusCount: number;
+  totalGroundTruthCount: number;
+  
+  exceptionClassificationAccuracy: number;
+  correctExpectedExceptionLabelsCount: number;
+  totalExpectedExceptionLabelsCount: number;
+  falsePositivesCount: number;
+  falseNegativesCount: number;
+  
+  recommendedActionAccuracy: number;
+  correctActionsCount: number;
+  totalActionRequiredCount: number;
+
+  confusionSummary: {
+    correctlyFullyMatched: number;
+    correctlyPartialMatched: number;
+    correctlyUnmatched: number;
+    falseFullyMatched: number;
+    falsePartialMatch: number;
+    falseUnmatched: number;
+    missedExceptions: number;
+    extraExceptions: number;
+  };
+}
+
+export interface HonestExceptionRecord {
+  exceptionId: string;
+  transactionId: string;
+  finalStatus: "Fully_Matched" | "Partial_Match" | "Unmatched";
+  type: ExceptionType;
+  invoiceAmount: number;
+  paymentAmount: number;
+  settlementAmount: number;
+  bankAmount: number;
+  difference: number;
+  ruleApplied: string;
+  evidenceAvailable: string[];
+  evidenceMissing: string[];
+  deterministicMatchConfidence: DeterministicMatchConfidence;
+  materialityThreshold: number;
+  thresholdExceeded: boolean;
+  recommendedAction: 'auto_resolve' | 'manual_review' | 'escalate';
+  reason: string;
+  resolutionState: 'Auto-resolved' | 'Unresolved — Manual Review' | 'Unresolved — Escalate' | 'Data Quality Blocked';
+}
+
+export interface Track04EvaluationSummary {
+  trackName: string;
+  financeOpsLoop: string;
+  dataMode: "Synthetic Demo Data" | "Local CSV Data";
+  batchId: string;
+  processedAt: string;
+  batchSize: number;
+  requiredMinimumBatchSize: number;
+  throughputStatus: "Pass" | "Fail";
+  matchRate: number;
+  fullyMatchedCount: number;
+  partialMatchesCount: number;
+  unmatchedCount: number;
+  statusAccountingReconciled: boolean;
+  statusAccountingFormula: string;
+  accuracyMetrics: BuildathonAccuracyMetrics;
+  honestExceptions: HonestExceptionRecord[];
+  unresolvedTransactionsCount: number;
+  unresolvedExceptionItemsCount: number;
+  autoResolvedExceptionItemsCount: number;
+  totalInrExceptionExposure: number;
+  largestUnresolvedDifference: number;
+  materialExceptionsCount: number;
+  dataQualityBlockedCount: number;
+  integrityStatus: "Passed" | "Warning" | "Failed";
+  dataFreshness: "Current" | "Previous result — rerun required";
+  isStale: boolean;
+}
+
 export interface ExceptionItem {
   id: string;
   transactionId: string; // The primary Invoice ID

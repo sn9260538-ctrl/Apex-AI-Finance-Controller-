@@ -346,7 +346,7 @@ export default function OverviewTab({ onNavigateToRecon }: OverviewTabProps) {
               </span>
             </div>
             <div>
-              <div className="text-xl font-display font-extrabold text-neu-primary">{latestResult.overallIntegrityStatus.toUpperCase()}</div>
+              <div className="text-xl font-display font-extrabold text-neu-primary">{String(latestResult.overallIntegrityStatus || 'PASS').toUpperCase()}</div>
               <div className="text-[11px] text-neu-muted mt-0.5">Mathematical hash & balancing verified</div>
             </div>
           </div>

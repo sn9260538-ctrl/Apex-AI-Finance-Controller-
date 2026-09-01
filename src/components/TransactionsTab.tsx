@@ -11,10 +11,10 @@ export default function TransactionsTab({ searchQuery = "" }: { searchQuery?: st
 
   // Unified list
   let unified = [
-    ...invoices.map(i => ({ ...i, source: 'Invoice', date: i.invoiceDate, id: i.id })),
-    ...payments.map(p => ({ ...p, source: 'Payment', date: p.paymentDate, id: p.id })),
-    ...settlements.map(s => ({ ...s, source: 'Settlement', date: s.settlementDate, id: s.id })),
-    ...bankCredits.map(b => ({ ...b, source: 'Bank Credit', date: b.creditDate, id: b.id }))
+    ...invoices.map(i => ({ ...i, source: 'Invoice', date: (i as any)?.invoiceDate || (i as any)?.date || '', id: (i as any)?.id || (i as any)?.invoiceId || '' })),
+    ...payments.map(p => ({ ...p, source: 'Payment', date: (p as any)?.paymentDate || (p as any)?.date || '', id: (p as any)?.id || (p as any)?.paymentId || '' })),
+    ...settlements.map(s => ({ ...s, source: 'Settlement', date: (s as any)?.settlementDate || (s as any)?.date || '', id: (s as any)?.id || (s as any)?.settlementId || '' })),
+    ...bankCredits.map(b => ({ ...b, source: 'Bank Credit', date: (b as any)?.creditDate || (b as any)?.date || '', id: (b as any)?.id || (b as any)?.bankCreditId || '' }))
   ];
 
   if (filterType !== 'All') {
@@ -22,54 +22,62 @@ export default function TransactionsTab({ searchQuery = "" }: { searchQuery?: st
   }
 
   if (searchQuery) {
-    const query = searchQuery.toLowerCase();
-    unified = unified.filter(u => {
-      // Common fields
-      if (u.source && String(u.source).toLowerCase().includes(query)) return true;
-      if (u.id.toLowerCase().includes(query)) return true;
-      if (u.date && String(u.date).toLowerCase().includes(query)) return true;
-      const itemAmt = (u as any).amount ?? (u as any).netAmount ?? (u as any).grossAmount;
-      if (itemAmt && String(itemAmt).toLowerCase().includes(query)) return true;
-      
-      // Source specific fields
-      if (u.source === 'Invoice') {
-        const inv = u as any;
-        if (inv.customerName?.toLowerCase().includes(query)) return true;
-        if (inv.category?.toLowerCase().includes(query)) return true;
-      }
-      if (u.source === 'Payment') {
-        const pay = u as any;
-        if (pay.invoiceId?.toLowerCase().includes(query)) return true;
-        if (pay.paymentMethod?.toLowerCase().includes(query)) return true;
-        if (pay.status?.toLowerCase().includes(query)) return true;
-      }
-      if (u.source === 'Settlement') {
-        const set = u as any;
-        if (set.paymentId?.toLowerCase().includes(query)) return true;
-        if (set.status?.toLowerCase().includes(query)) return true;
-      }
-      if (u.source === 'Bank Credit') {
-        const bc = u as any;
-        if (bc.settlementId?.toLowerCase().includes(query)) return true;
-        if (bc.narration?.toLowerCase().includes(query)) return true;
-      }
-      return false;
-    });
+    const query = String(searchQuery || '').toLowerCase().trim();
+    if (query) {
+      unified = unified.filter(u => {
+        // Common fields
+        if (u.source && String(u.source).toLowerCase().includes(query)) return true;
+        if (u.id && String(u.id).toLowerCase().includes(query)) return true;
+        if (u.date && String(u.date).toLowerCase().includes(query)) return true;
+        const itemAmt = (u as any).amount ?? (u as any).netAmount ?? (u as any).grossAmount;
+        if (itemAmt !== undefined && itemAmt !== null && String(itemAmt).toLowerCase().includes(query)) return true;
+        
+        // Source specific fields
+        if (u.source === 'Invoice') {
+          const inv = u as any;
+          if (inv.customerName && String(inv.customerName).toLowerCase().includes(query)) return true;
+          if (inv.category && String(inv.category).toLowerCase().includes(query)) return true;
+        }
+        if (u.source === 'Payment') {
+          const pay = u as any;
+          if (pay.invoiceId && String(pay.invoiceId).toLowerCase().includes(query)) return true;
+          if (pay.paymentMethod && String(pay.paymentMethod).toLowerCase().includes(query)) return true;
+          if (pay.status && String(pay.status).toLowerCase().includes(query)) return true;
+        }
+        if (u.source === 'Settlement') {
+          const set = u as any;
+          if (set.paymentId && String(set.paymentId).toLowerCase().includes(query)) return true;
+          if (set.status && String(set.status).toLowerCase().includes(query)) return true;
+        }
+        if (u.source === 'Bank Credit') {
+          const bc = u as any;
+          if (bc.settlementId && String(bc.settlementId).toLowerCase().includes(query)) return true;
+          if (bc.narration && String(bc.narration).toLowerCase().includes(query)) return true;
+        }
+        return false;
+      });
+    }
   }
 
   // sort by date desc
-  unified.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  unified.sort((a, b) => {
+    const timeA = a.date ? new Date(a.date).getTime() : 0;
+    const timeB = b.date ? new Date(b.date).getTime() : 0;
+    return timeB - timeA;
+  });
 
   const getStatus = (item: any) => {
     if (!latestResult) return { label: 'Not Reconciled', color: 'text-neu-muted' };
     
     // Check if it's involved in any exception
-    const hasException = latestResult.exceptions.some(e => e.sourceRecordIds.includes(item.id));
+    const hasException = (latestResult.exceptions || []).some(e => 
+      Array.isArray(e.sourceRecordIds) && item.id && e.sourceRecordIds.includes(item.id)
+    );
     if (hasException) return { label: 'Exception', color: 'text-[#E74C3C]' };
     
     // Status mapping based on invoice
     if (item.source === 'Invoice') {
-      const st = latestResult.statusesByTransactionId[item.id];
+      const st = latestResult.statusesByTransactionId?.[item.id];
       if (st === 'Fully_Matched') return { label: 'Fully Matched', color: 'text-[#9EEB75]' };
       if (st === 'Partial_Match') return { label: 'Partial Match', color: 'text-[#F39C12]' };
       if (st === 'Unmatched') return { label: 'Unmatched', color: 'text-[#E74C3C]' };
