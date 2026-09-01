@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neu-base: #E0E5EC;
+  --color-neu-primary: #3D4852;
+  --color-neu-muted: #6B7280;
+  --color-neu-accent: #6C63FF;
+  --color-neu-accent-light: #8B84FF;
+  --color-neu-success: #38B2AC;
+
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+
+  --shadow-neu-extruded: 9px 9px 16px rgb(163 177 198 / 0.6), -9px -9px 16px rgba(255 255 255 / 0.5);
+  --shadow-neu-extruded-hover: 12px 12px 20px rgb(163 177 198 / 0.7), -12px -12px 20px rgba(255 255 255 / 0.6);
+  --shadow-neu-extruded-sm: 5px 5px 10px rgb(163 177 198 / 0.6), -5px -5px 10px rgba(255 255 255 / 0.5);
+  --shadow-neu-inset: inset 6px 6px 10px rgb(163 177 198 / 0.6), inset -6px -6px 10px rgba(255 255 255 / 0.5);
+  --shadow-neu-inset-deep: inset 10px 10px 20px rgb(163 177 198 / 0.7), inset -10px -10px 20px rgba(255 255 255 / 0.6);
+  --shadow-neu-inset-sm: inset 3px 3px 6px rgb(163 177 198 / 0.6), inset -3px -3px 6px rgba(255 255 255 / 0.5);
+}
+
+body {
+  background-color: var(--color-neu-base);
+  color: var(--color-neu-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Float animation for decorative ambient motion */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
