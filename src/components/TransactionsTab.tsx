@@ -5,9 +5,42 @@ import { Search, Filter, Plus, ArrowDownUp, FileWarning } from 'lucide-react';
 import { X } from "lucide-react";
 export default function TransactionsTab({ searchQuery = "" }: { searchQuery?: string }) {
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newRecord, setNewRecord] = useState({ id: "", amount: "", date: "", description: "" });
-  const { invoices, payments, settlements, bankCredits, latestResult } = useFinanceData();
+  const [newRecord, setNewRecord] = useState({ type: "invoices", id: "", amount: "", date: "", description: "" });
+  const { invoices, payments, settlements, bankCredits, latestResult, updateDataset } = useFinanceData();
   const [filterType, setFilterType] = useState('All');
+
+  const handleAddRecord = () => {
+    if (!newRecord.id || !newRecord.amount || !newRecord.type) {
+      alert("Please fill in ID and Amount.");
+      return;
+    }
+    
+    const recType = newRecord.type as 'invoices' | 'payments' | 'settlements' | 'bankCredits';
+    const recAmt = parseFloat(newRecord.amount);
+    const now = new Date().toISOString().split('T')[0];
+
+    let recordObj: any = {};
+    if (recType === 'invoices') {
+      recordObj = { id: newRecord.id, invoiceId: newRecord.id, invoiceDate: newRecord.date || now, netAmount: recAmt, grossAmount: recAmt, customerName: newRecord.description, status: 'ISSUED' };
+    } else if (recType === 'payments') {
+      recordObj = { id: newRecord.id, paymentId: newRecord.id, paymentDate: newRecord.date || now, amount: recAmt, paymentMethod: newRecord.description || 'MANUAL', status: 'SUCCESS', invoiceId: newRecord.id };
+    } else if (recType === 'settlements') {
+      recordObj = { id: newRecord.id, settlementId: newRecord.id, settlementDate: newRecord.date || now, grossAmount: recAmt, netAmount: recAmt, status: 'SETTLED', paymentId: newRecord.id };
+    } else if (recType === 'bankCredits') {
+      recordObj = { id: newRecord.id, bankCreditId: newRecord.id, creditDate: newRecord.date || now, amount: recAmt, narration: newRecord.description, utrNumber: newRecord.id, settlementId: newRecord.id };
+    }
+
+    let currentList: any[] = [];
+    if (recType === 'invoices') currentList = invoices;
+    else if (recType === 'payments') currentList = payments;
+    else if (recType === 'settlements') currentList = settlements;
+    else if (recType === 'bankCredits') currentList = bankCredits;
+    
+    updateDataset(recType, [...currentList, recordObj], 'Manual Entry');
+    
+    setShowAddModal(false);
+    setNewRecord({ type: "invoices", id: "", amount: "", date: "", description: "" });
+  };
 
   // Unified list
   let unified = [
@@ -99,20 +132,39 @@ export default function TransactionsTab({ searchQuery = "" }: { searchQuery?: st
             </div>
             <div className="space-y-4">
               <div>
+                <label className="block text-xs font-bold text-neu-muted uppercase tracking-widest mb-2">Record Type</label>
+                <select 
+                  value={newRecord.type} 
+                  onChange={(e) => setNewRecord({...newRecord, type: e.target.value})} 
+                  className="w-full p-4 rounded-2xl bg-neu-base shadow-neu-inset text-sm font-bold text-neu-primary focus:outline-none focus:ring-2 focus:ring-neu-accent"
+                >
+                  <option value="invoices">Invoice</option>
+                  <option value="payments">Payment</option>
+                  <option value="settlements">Gateway Settlement</option>
+                  <option value="bankCredits">Bank Credit Statement</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs font-bold text-neu-muted uppercase tracking-widest mb-2">Record ID</label>
                 <input type="text" value={newRecord.id} onChange={(e) => setNewRecord({...newRecord, id: e.target.value})} className="w-full p-4 rounded-2xl bg-neu-base shadow-neu-inset text-sm font-bold text-neu-primary focus:outline-none focus:ring-2 focus:ring-neu-accent" placeholder="e.g. INV-1234" />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-neu-muted uppercase tracking-widest mb-2">Amount (₹)</label>
-                <input type="number" value={newRecord.amount} onChange={(e) => setNewRecord({...newRecord, amount: e.target.value})} className="w-full p-4 rounded-2xl bg-neu-base shadow-neu-inset text-sm font-bold text-neu-primary focus:outline-none focus:ring-2 focus:ring-neu-accent" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-neu-muted uppercase tracking-widest mb-2">Amount (₹)</label>
+                  <input type="number" value={newRecord.amount} onChange={(e) => setNewRecord({...newRecord, amount: e.target.value})} className="w-full p-4 rounded-2xl bg-neu-base shadow-neu-inset text-sm font-bold text-neu-primary focus:outline-none focus:ring-2 focus:ring-neu-accent" placeholder="0.00" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-neu-muted uppercase tracking-widest mb-2">Date (Optional)</label>
+                  <input type="date" value={newRecord.date} onChange={(e) => setNewRecord({...newRecord, date: e.target.value})} className="w-full p-4 rounded-2xl bg-neu-base shadow-neu-inset text-sm font-bold text-neu-primary focus:outline-none focus:ring-2 focus:ring-neu-accent" />
+                </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-neu-muted uppercase tracking-widest mb-2">Description</label>
-                <input type="text" value={newRecord.description} onChange={(e) => setNewRecord({...newRecord, description: e.target.value})} className="w-full p-4 rounded-2xl bg-neu-base shadow-neu-inset text-sm font-bold text-neu-primary focus:outline-none focus:ring-2 focus:ring-neu-accent" />
+                <label className="block text-xs font-bold text-neu-muted uppercase tracking-widest mb-2">Description / Customer / Narration</label>
+                <input type="text" value={newRecord.description} onChange={(e) => setNewRecord({...newRecord, description: e.target.value})} className="w-full p-4 rounded-2xl bg-neu-base shadow-neu-inset text-sm font-bold text-neu-primary focus:outline-none focus:ring-2 focus:ring-neu-accent" placeholder="Optional details..." />
               </div>
               <button 
-                onClick={() => { alert('Local record added to current session state!'); setShowAddModal(false); }}
-                className="w-full py-4 bg-neu-primary rounded-2xl font-bold text-neu-base shadow-neu-extruded-sm hover:-translate-y-1 transition-all"
+                onClick={handleAddRecord}
+                className="w-full py-4 bg-neu-primary rounded-2xl font-bold text-neu-base shadow-neu-extruded-sm hover:-translate-y-1 transition-all mt-4"
               >
                 Save Record
               </button>
