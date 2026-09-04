@@ -10,10 +10,9 @@ import Papa from "papaparse";
 import { 
   Download, FileText, ArrowRight, ShieldCheck, AlertTriangle, 
   FileSpreadsheet, Image as ImageIcon, CheckCircle2, History, TrendingUp, DollarSign, Clock, Layers,
-  PieChart as PieChartIcon, Activity, Trophy
+  Activity, Trophy
 } from 'lucide-react';
 import StaleWarningBanner from './StaleWarningBanner';
-import BudgetsTab from './BudgetsTab';
 import Track04EvaluationSection from './Track04EvaluationSection';
 import { ExceptionType } from '../types';
 
@@ -21,7 +20,7 @@ interface ReportsTabProps {
   onNavigateToRecon?: () => void;
 }
 
-type ReportSubTab = 'track04_eval' | 'finance_ops' | 'cash_liquidity' | 'budget_actual' | 'audit_exports';
+type ReportSubTab = 'track04_eval' | 'finance_ops' | 'cash_liquidity' | 'audit_exports';
 
 export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
   const reportRef = useRef<HTMLDivElement>(null);
@@ -452,10 +451,9 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
       }];
 
   const subTabs = [
-    { id: 'track04_eval' as ReportSubTab, label: 'Track 04 Buildathon Evaluation', icon: Trophy },
+    { id: 'track04_eval' as ReportSubTab, label: 'Controller Evaluation', icon: Trophy },
     { id: 'finance_ops' as ReportSubTab, label: 'Finance Operations', icon: Activity },
     { id: 'cash_liquidity' as ReportSubTab, label: 'Cash & Liquidity', icon: DollarSign },
-    { id: 'budget_actual' as ReportSubTab, label: 'Budget vs Actual', icon: PieChartIcon },
     { id: 'audit_exports' as ReportSubTab, label: 'Audit Exports', icon: Download },
   ];
 
@@ -466,7 +464,7 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
         <div>
           <h2 className="text-2xl font-display font-bold text-neu-primary">Finance Reports & Analytics</h2>
           <p className="text-sm text-neu-muted mt-1 max-w-2xl">
-            Reconciliation performance, liquidity realization, budget tracking, and deterministic audit exports.
+            Reconciliation performance, liquidity realization, and deterministic audit exports.
           </p>
         </div>
 
@@ -551,7 +549,7 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
       {/* Stale Warning Banner */}
       <StaleWarningBanner onRunRecon={onNavigateToRecon} />
 
-      {/* SUB-VIEW 0: TRACK 04 BUILDATHON EVALUATION */}
+      {/* SUB-VIEW 0: CONTROLLER EVALUATION */}
       {activeSubTab === 'track04_eval' && (
         <div className="animate-fade-in">
           <Track04EvaluationSection onSelectTransaction={onNavigateToRecon} />
@@ -607,7 +605,11 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
                     <h3 className="text-lg font-bold text-neu-primary">Reconciliation Health</h3>
                     <p className="text-xs text-neu-muted">Final status across the complete batch.</p>
                   </div>
-                  <span className="px-3 py-1 bg-neu-base shadow-neu-inset rounded-full text-xs font-extrabold text-[#9EEB75]">
+                  <span className={`px-3 py-1 bg-neu-base shadow-neu-inset rounded-full text-xs font-extrabold ${
+                    latestResult.matchRate.toFixed(1) === '100.0' ? 'text-[#9EEB75]' : 
+                    latestResult.matchRate.toFixed(1) === '0.0' ? 'text-[#E74C3C]' : 
+                    'text-[#F39C12]'
+                  }`}>
                     {latestResult.matchRate.toFixed(1)}% Matched
                   </span>
                 </div>
@@ -1086,13 +1088,6 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
         </div>
       )}
 
-      {/* SUB-VIEW 3: BUDGET VS ACTUAL */}
-      {activeSubTab === 'budget_actual' && (
-        <div className="animate-fade-in">
-          <BudgetsTab />
-        </div>
-      )}
-
       {/* SUB-VIEW 4: AUDIT EXPORTS */}
       {activeSubTab === 'audit_exports' && (
         <div className="space-y-8 animate-fade-in">
@@ -1180,13 +1175,13 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
                 </button>
               </div>
 
-              {/* Track 04 Evaluation Export Card */}
+              {/* Controller Evaluation Export Card */}
               <div className="p-6 bg-neu-base rounded-[24px] shadow-neu-inset flex flex-col justify-between space-y-4">
                 <div>
                   <div className="w-10 h-10 rounded-2xl bg-neu-base shadow-neu-extruded flex items-center justify-center text-neu-accent mb-3">
                     <Trophy className="w-5 h-5" />
                   </div>
-                  <h4 className="text-base font-bold text-neu-primary">Track 04 Buildathon Report</h4>
+                  <h4 className="text-base font-bold text-neu-primary">Controller Evaluation Report</h4>
                   <p className="text-xs text-neu-muted mt-1">Full evaluation scorecard against synthetic ground truth, accuracy metrics, and honest exception ledger.</p>
                 </div>
                 <button
@@ -1194,7 +1189,7 @@ export default function ReportsTab({ onNavigateToRecon }: ReportsTabProps) {
                   className="w-full py-3 bg-neu-base shadow-neu-extruded hover:shadow-neu-extruded-hover active:shadow-neu-inset rounded-2xl font-bold text-xs text-neu-primary flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <Trophy className="w-4 h-4 text-neu-accent" />
-                  View & Download Track 04 Report
+                  View & Download Evaluation Report
                 </button>
               </div>
 

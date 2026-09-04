@@ -91,7 +91,7 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
   const handleLoadDemo = () => {
     resetDemoData();
     resetFileInputs();
-    setStatusMessage("Demo dataset loaded (100-record synthetic batch for Track 04 Buildathon evaluation).");
+    setStatusMessage("Demo dataset loaded (100-record synthetic batch for controller evaluation).");
     setTimeout(() => setStatusMessage(null), 4000);
   };
 
@@ -290,7 +290,7 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
         <div>
           <h2 className="text-2xl font-display font-bold text-neu-primary">Reconciliation Engine</h2>
           <p className="text-sm text-neu-muted mt-1">
-            Deterministic 4-way matching loop (Invoice → Payment → Settlement → Bank Credit) with complete Buildathon evaluation.
+            Deterministic 4-way matching loop (Invoice → Payment → Settlement → Bank Credit) with complete controller evaluation.
           </p>
         </div>
         
@@ -423,7 +423,7 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
             </h3>
             <p className="text-sm text-neu-muted">
               {hasAnyData 
-                ? "Your data files are ready. Click 'Run Reconciliation' above to execute 4-way deterministic matching and evaluate against Track 04 standards."
+                ? "Your data files are ready. Click 'Run Reconciliation' above to execute 4-way deterministic matching and evaluate against ground-truth standards."
                 : "You have cleared all datasets. You can select your own CSV files for Invoices, Payments, Settlements, and Bank Credits, or click 'Load Synthetic Demo Data' to load the 100-record synthetic batch."}
             </p>
           </div>
@@ -452,7 +452,7 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
               }`}
             >
               <Trophy className="w-4 h-4 text-neu-accent" />
-              Track 04 Buildathon Evaluation
+              Controller Evaluation
             </button>
 
             <button
@@ -480,7 +480,7 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
             </button>
           </div>
 
-          {/* VIEW 1: Track 04 Buildathon Evaluation Mode */}
+          {/* VIEW 1: Controller Evaluation Mode */}
           {activeSubView === 'buildathon_eval' && (
             <Track04EvaluationSection 
               onSelectTransaction={(txId) => {
@@ -524,7 +524,11 @@ export default function ReconciliationTab({ searchQuery = "", onViewOverview }: 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                    <div className="p-4 bg-neu-base shadow-neu-extruded rounded-2xl">
                      <p className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-1">Match Rate</p>
-                     <p className="text-3xl font-display font-extrabold text-[#9EEB75]">{latestResult.matchRate.toFixed(1)}%</p>
+                     <p className={`text-3xl font-display font-extrabold ${
+                        latestResult.matchRate.toFixed(1) === '100.0' ? 'text-[#9EEB75]' : 
+                        latestResult.matchRate.toFixed(1) === '0.0' ? 'text-[#E74C3C]' : 
+                        'text-[#F39C12]'
+                     }`}>{latestResult.matchRate.toFixed(1)}%</p>
                    </div>
                    <div className="p-4 bg-neu-base shadow-neu-extruded rounded-2xl">
                      <p className="text-xs font-bold text-neu-muted uppercase tracking-widest mb-1">Exceptions</p>

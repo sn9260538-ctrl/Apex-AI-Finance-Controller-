@@ -406,7 +406,11 @@ export default function OverviewTab({ onNavigateToRecon }: OverviewTabProps) {
                     Realization Curve
                   </button>
                 </div>
-                <span className="px-3 py-1 bg-neu-base shadow-neu-inset rounded-full text-xs font-bold text-[#9EEB75] hidden sm:inline-block">
+                <span className={`px-3 py-1 bg-neu-base shadow-neu-inset rounded-full text-xs font-bold hidden sm:inline-block ${
+                  realizationRate === '100.0' ? 'text-[#9EEB75]' : 
+                  realizationRate === '0.0' ? 'text-[#E74C3C]' : 
+                  'text-[#F39C12]'
+                }`}>
                   {realizationRate}% Realized
                 </span>
               </div>
@@ -550,7 +554,11 @@ export default function OverviewTab({ onNavigateToRecon }: OverviewTabProps) {
                   Transaction match outcome distribution.
                 </p>
               </div>
-              <span className="px-3 py-1 bg-neu-base shadow-neu-inset rounded-full text-xs font-extrabold text-[#9EEB75]">
+              <span className={`px-3 py-1 bg-neu-base shadow-neu-inset rounded-full text-xs font-extrabold ${
+                latestResult.matchRate.toFixed(1) === '100.0' ? 'text-[#9EEB75]' : 
+                latestResult.matchRate.toFixed(1) === '0.0' ? 'text-[#E74C3C]' : 
+                'text-[#F39C12]'
+              }`}>
                 {latestResult.matchRate.toFixed(1)}%
               </span>
             </div>

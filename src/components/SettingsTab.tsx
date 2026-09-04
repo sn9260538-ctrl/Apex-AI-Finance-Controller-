@@ -16,7 +16,7 @@ export default function SettingsTab() {
     reconTdsRate: rules.tdsRate
   });
 
-  // Local storage Gemini API Key state
+  // Local storage API Key state
   const [apiKey, setApiKey] = useState(() => 
     localStorage.getItem('gemini_api_key') || localStorage.getItem('GEMINI_API_KEY') || ''
   );
@@ -105,7 +105,7 @@ export default function SettingsTab() {
         )}
       </div>
 
-      {/* Zero-Cost Bring Your Own Gemini API Key Section */}
+      {/* API Key Section */}
       <div className="p-6 sm:p-8 rounded-[28px] bg-neu-base shadow-neu-extruded border border-neu-border/60 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neu-muted/15 pb-5">
           <div className="flex items-center gap-3.5">
@@ -114,13 +114,10 @@ export default function SettingsTab() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="font-bold text-neu-primary text-base">Gemini AI Controller Key</h4>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#9EEB75]/25 text-[#1B5E20] border border-[#9EEB75]/60">
-                  Zero-Cost / BYOK
-                </span>
+                <h4 className="font-bold text-neu-primary text-base">AI Controller Key</h4>
               </div>
               <p className="text-xs text-neu-muted mt-0.5">
-                Bring your own free Gemini API key. Stored strictly in your browser's <code className="text-neu-primary font-mono text-[11px] bg-neutral-100 px-1 py-0.5 rounded">localStorage</code> — never saved to any database.
+                Enter your API key. It is saved only in your browser and stays completely private.
               </p>
             </div>
           </div>
@@ -148,7 +145,7 @@ export default function SettingsTab() {
                 type={showKey ? "text" : "password"}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Paste your GEMINI_API_KEY here (e.g. AIzaSy...)"
+                placeholder="Paste your API key here (e.g. AIzaSy...)"
                 className="w-full bg-neu-base shadow-neu-inset rounded-2xl pl-5 pr-12 py-3.5 text-sm font-mono text-neu-primary outline-none focus:ring-2 focus:ring-neu-accent transition-all"
               />
               <button
@@ -185,7 +182,7 @@ export default function SettingsTab() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-neu-muted gap-2 pt-1">
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-[#2E7D32]" />
-              <span>Prioritized by <strong>AI Financial Controller</strong> for zero-cost analysis. If no key is set, the app runs the deterministic local engine.</span>
+              <span>Used for AI analysis. If empty, the app uses its built-in engine.</span>
             </div>
             <a
               href="https://aistudio.google.com/apikey"
@@ -193,18 +190,18 @@ export default function SettingsTab() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-neu-accent hover:underline font-semibold"
             >
-              Get a 100% free key from Google AI Studio <ExternalLink className="w-3 h-3" />
+              Get an API key <ExternalLink className="w-3 h-3" />
             </a>
           </div>
 
           {keySavedStatus === 'saved' && (
             <div className="p-3 bg-[#9EEB75]/20 border border-[#9EEB75] rounded-xl text-xs font-bold text-[#2E7D32] flex items-center gap-2 animate-fade-in">
-              <Check className="w-4 h-4" /> Your custom Gemini API key has been persisted locally in browser localStorage!
+              <Check className="w-4 h-4" /> API key saved safely in your browser.
             </div>
           )}
           {keySavedStatus === 'cleared' && (
             <div className="p-3 bg-neutral-100 border border-neutral-300 rounded-xl text-xs font-bold text-neutral-600 flex items-center gap-2 animate-fade-in">
-              <Trash2 className="w-4 h-4" /> API key removed. Reverted to built-in local controller mode.
+              <Trash2 className="w-4 h-4" /> API key removed. Using built-in engine.
             </div>
           )}
         </div>

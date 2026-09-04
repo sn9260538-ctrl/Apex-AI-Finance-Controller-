@@ -252,7 +252,7 @@ export function evaluateReconciliationResult(
   }
 
   return {
-    trackName: "Razorpay AI Buildathon — Track 04 Evaluation",
+    trackName: "AI Finance Controller Evaluation",
     financeOpsLoop: "Invoice → Payment → Settlement → Bank Credit",
     dataMode: result.processingMode,
     batchId: result.batchId,

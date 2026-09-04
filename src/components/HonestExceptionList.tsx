@@ -68,7 +68,7 @@ export default function HonestExceptionList({
               <AlertTriangle className="w-3.5 h-3.5 text-[#E74C3C]" />
               Unfiltered Audit Ledger
             </span>
-            <span className="text-xs text-neu-muted font-medium">Buildathon Standard Compliance</span>
+            <span className="text-xs text-neu-muted font-medium">Strict Audit Compliance</span>
           </div>
           <h3 className="text-xl font-display font-bold text-neu-primary">Honest Exception List</h3>
           <p className="text-xs text-neu-muted mt-1 max-w-2xl">
@@ -319,7 +319,7 @@ export default function HonestExceptionList({
 
       <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-neu-muted pt-2">
         <p>Showing {filteredExceptions.length} of {exceptions.length} total exception records.</p>
-        <p className="text-[11px] italic">Buildathon Rule: Zero exception records are hidden or excluded from this audit table.</p>
+        <p className="text-[11px] italic">Audit Rule: Zero exception records are hidden or excluded from this audit table.</p>
       </div>
     </div>
   );

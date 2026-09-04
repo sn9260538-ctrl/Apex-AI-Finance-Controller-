@@ -1,7 +1,7 @@
 import { GroundTruthTransaction, ExceptionType } from '../types';
 
 /**
- * Centrally defined ground-truth dataset for Razorpay AI Buildathon Track 04 evaluation.
+ * Centrally defined ground-truth dataset for AI Finance Controller evaluation.
  * Note: The reconciliation engine does NOT read this ground truth during matching.
  * It is solely used post-reconciliation by the evaluation engine to compute decision accuracy.
  */

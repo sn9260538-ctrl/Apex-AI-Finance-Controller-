@@ -24,9 +24,9 @@ export default function Track04EvaluationSection({ onSelectTransaction }: Track0
     return (
       <div className="p-8 bg-neu-base rounded-[32px] shadow-neu-extruded text-center space-y-3">
         <Trophy className="w-10 h-10 text-neu-muted mx-auto" />
-        <h3 className="text-xl font-bold text-neu-primary">Razorpay AI Buildathon — Track 04 Evaluation</h3>
+        <h3 className="text-xl font-bold text-neu-primary">AI Finance Controller Evaluation</h3>
         <p className="text-xs text-neu-muted max-w-md mx-auto">
-          No reconciliation run completed yet. Run reconciliation with the 100-record synthetic batch to generate full Track 04 evaluation metrics.
+          No reconciliation run completed yet. Run reconciliation with the 100-record synthetic batch to generate full evaluation metrics.
         </p>
       </div>
     );
@@ -41,7 +41,7 @@ export default function Track04EvaluationSection({ onSelectTransaction }: Track0
   const handleExportEvaluationJson = () => {
     const jsonReport = {
       project: "Apex — AI Finance Controller",
-      track: "Razorpay AI Buildathon Track 04",
+      track: "AI Finance Controller Evaluation",
       tagline: "Run the books and the cash position.",
       evaluationSummary: evaluation,
       reconciliationRules: latestResult.rulesFingerprint,
@@ -53,7 +53,7 @@ export default function Track04EvaluationSection({ onSelectTransaction }: Track0
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `apex-track-04-evaluation-report-${latestResult.batchId}.json`;
+    a.download = `apex-evaluation-report-${latestResult.batchId}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -83,9 +83,9 @@ export default function Track04EvaluationSection({ onSelectTransaction }: Track0
       });
 
       pdf.addImage(dataUrl, 'PNG', 0, 0, sectionRef.current.offsetWidth, sectionRef.current.offsetHeight);
-      pdf.save(`apex-track-04-evaluation-report-${latestResult.batchId}.pdf`);
+      pdf.save(`apex-evaluation-report-${latestResult.batchId}.pdf`);
     } catch (err) {
-      console.error('Track 04 Evaluation PDF export failed', err);
+      console.error('Evaluation PDF export failed', err);
     } finally {
       setIsExportingPdf(false);
     }
@@ -93,14 +93,14 @@ export default function Track04EvaluationSection({ onSelectTransaction }: Track0
 
   return (
     <div ref={sectionRef} className="space-y-8 animate-fade-in">
-      {/* 1. Track 04 Buildathon Banner */}
+      {/* 1. Controller Evaluation Banner */}
       <div className="p-8 bg-neu-base rounded-[32px] shadow-neu-extruded space-y-6 border border-neu-muted/20 relative overflow-hidden">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 pb-6 border-b border-neu-muted/15">
           <div>
             <div className="flex items-center gap-2 flex-wrap mb-2">
               <span className="px-3.5 py-1 bg-neu-accent text-white rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-neu-extruded-sm">
                 <Trophy className="w-3.5 h-3.5 text-white" />
-                Razorpay AI Buildathon — Track 04
+                Controller Evaluation
               </span>
               <span className="px-3 py-1 bg-neu-base shadow-neu-inset text-neu-primary text-xs font-bold rounded-full">
                 “Run the books and the cash position.”
@@ -128,7 +128,7 @@ export default function Track04EvaluationSection({ onSelectTransaction }: Track0
               className="px-4 py-2.5 bg-neu-base shadow-neu-extruded hover:shadow-neu-extruded-sm active:shadow-neu-inset rounded-2xl text-xs font-bold text-neu-primary flex items-center gap-2 transition-all cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4 text-neu-accent" />
-              Download Track 04 JSON Report
+              Download Evaluation JSON Report
             </button>
 
             <button
@@ -137,7 +137,7 @@ export default function Track04EvaluationSection({ onSelectTransaction }: Track0
               className="px-4 py-2.5 bg-neu-accent text-white shadow-neu-extruded-sm hover:opacity-95 active:shadow-neu-inset rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
             >
               <Download className="w-4 h-4 text-white" />
-              {isExportingPdf ? 'Generating PDF...' : 'Download Track 04 PDF Report'}
+              {isExportingPdf ? 'Generating PDF...' : 'Download Evaluation PDF Report'}
             </button>
           </div>
         </div>
@@ -168,7 +168,7 @@ export default function Track04EvaluationSection({ onSelectTransaction }: Track0
         </div>
 
         <p className="text-[11px] text-neu-muted italic bg-neu-base/60 p-2.5 rounded-xl shadow-neu-inset text-center">
-          Synthetic demonstration data — no real customer, bank, or Razorpay information.
+          Synthetic demonstration data — no real customer, bank, or live gateway information.
         </p>
       </div>
 

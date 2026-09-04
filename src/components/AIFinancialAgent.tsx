@@ -423,7 +423,7 @@ FINANCIAL_STATE_JSON:${minifiedReportJson}`;
                   <span className="text-[10px] text-neu-accent font-medium">Reconciliation & Ledger Intelligence</span>
                   {manualKey ? (
                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#9EEB75]/25 text-[#1B5E20] font-extrabold border border-[#9EEB75]/60 flex items-center gap-0.5">
-                      <Check className="w-2.5 h-2.5" /> BYOK Active
+                      <Check className="w-2.5 h-2.5" /> Key Active
                     </span>
                   ) : null}
                 </div>
@@ -468,7 +468,7 @@ FINANCIAL_STATE_JSON:${minifiedReportJson}`;
           {showKeyInput && (
             <div className="bg-neutral-900 text-white p-3 text-xs flex flex-col gap-2 border-b border-neutral-700">
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-neutral-300">Custom Gemini API Key (Zero-Cost BYOK)</span>
+                <span className="font-semibold text-neutral-300">Custom API Key</span>
                 <span className="text-[10px] text-neutral-400">Synced with Settings tab</span>
               </div>
               <div className="flex gap-2">
@@ -476,7 +476,7 @@ FINANCIAL_STATE_JSON:${minifiedReportJson}`;
                   type="password"
                   value={manualKey}
                   onChange={(e) => setManualKey(e.target.value)}
-                  placeholder="Paste GEMINI_API_KEY..."
+                  placeholder="Paste API key..."
                   className="flex-1 px-2.5 py-1.5 rounded bg-neutral-800 border border-neutral-700 text-white text-xs focus:outline-none focus:border-neu-accent"
                 />
                 <button
