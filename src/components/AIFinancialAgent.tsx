@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Bot, X, Send, Loader2, MessageSquare, Key, Check } from 'lucide-react';
+import { Bot, X, Send, Loader2, MessageSquare, Key, Check, RotateCcw, BarChart3, TrendingUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useFinanceData } from '../context/FinanceDataContext';
 import { ReconciliationResult } from '../types';
@@ -11,6 +11,7 @@ interface ChatMessage {
 
 const QUICK_ACTIONS = [
   "Summary of my finances",
+  "Show visual reconciliation chart",
   "Explain my recent exceptions",
   "Summarize my cash flow & settlements",
   "What is my reconciliation status?"
@@ -127,6 +128,7 @@ export function formatTokenOptimizedReport(
 export default function AIFinancialAgent() {
   const [isOpen, setIsOpen] = useState(false);
   const [showKeyInput, setShowKeyInput] = useState(false);
+  const [showChart, setShowChart] = useState(false);
   const [manualKey, setManualKey] = useState(() => 
     localStorage.getItem('gemini_api_key') || localStorage.getItem('GEMINI_API_KEY') || ''
   );
@@ -159,6 +161,13 @@ export default function AIFinancialAgent() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Reset / Clear chat conversation history
+  const handleClearChat = () => {
+    setMessages([
+      { role: 'agent', text: 'Hello! I am your AI Financial Controller. Chat history cleared. How can I assist you with your reconciliation and ledger audits today?' }
+    ]);
+  };
 
   // Synchronize key dynamically from localStorage (e.g. when configured in Settings tab)
   useEffect(() => {
@@ -231,6 +240,26 @@ export default function AIFinancialAgent() {
              `**Settlement Conversion:** Approximately **${amt.grossInvoiceValue ? ((amt.bankCreditedValue / amt.grossInvoiceValue) * 100).toFixed(1) : 0}%** of total billed receivables are currently credited in your bank accounts.`;
     }
 
+    if (p.includes("chart") || p.includes("visual") || p.includes("graph") || p.includes("distribution")) {
+      const matchPct = ((latestResult.fullyMatched / (latestResult.batchSize || 1)) * 100).toFixed(1);
+      const partialPct = ((latestResult.partialMatches / (latestResult.batchSize || 1)) * 100).toFixed(1);
+      const exPct = ((latestResult.totalExceptionItems / (latestResult.batchSize || 1)) * 100).toFixed(1);
+      const unPct = ((latestResult.unmatched / (latestResult.batchSize || 1)) * 100).toFixed(1);
+      return `### 📊 Visual Reconciliation Chart Breakdown\n\n` +
+             `Here is the clear ledger transaction distribution for batch \`${latestResult.batchId}\`:\n\n` +
+             `| Status Segment | Count | Share | Visual Distribution |\n` +
+             `| :--- | :--- | :--- | :--- |\n` +
+             `| 🟢 **Fully Matched** | ${latestResult.fullyMatched} | ${matchPct}% | \`${"█".repeat(Math.max(1, Math.round(Number(matchPct) / 10)))}\` |\n` +
+             `| 🟡 **Partial Matches** | ${latestResult.partialMatches} | ${partialPct}% | \`${"█".repeat(Math.max(1, Math.round(Number(partialPct) / 10)))}\` |\n` +
+             `| 🔴 **Exceptions Flagged** | ${latestResult.totalExceptionItems} | ${exPct}% | \`${"█".repeat(Math.max(1, Math.round(Number(exPct) / 10)))}\` |\n` +
+             `| ⚪ **Unmatched** | ${latestResult.unmatched} | ${unPct}% | \`${"█".repeat(Math.max(1, Math.round(Number(unPct) / 10)))}\` |\n\n` +
+             `#### 💰 Cash Flow Distribution\n` +
+             `- **Confirmed Bank Cash:** ₹${amt.bankCreditedValue.toLocaleString('en-IN')}\n` +
+             `- **Pending Settlements:** ₹${amt.pendingSettlementValue.toLocaleString('en-IN')}\n` +
+             `- **Discrepancy Exposure:** ₹${amt.totalExceptionExposure.toLocaleString('en-IN')}\n\n` +
+             `*(Click the **Chart** icon in the header above to open the live interactive visual chart bar anytime.)*`;
+    }
+
     // Default executive summary
     return `### 📊 Executive Financial Reconciliation Summary\n\n` +
            `| Metric | Status / Value |\n` +
@@ -250,6 +279,10 @@ export default function AIFinancialAgent() {
   const handleSend = async (textOverride?: string) => {
     const userMsg = (textOverride || input).trim();
     if (!userMsg) return;
+
+    if (userMsg.toLowerCase().includes("chart") || userMsg.toLowerCase().includes("graph")) {
+      setShowChart(true);
+    }
 
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setInput('');
@@ -396,7 +429,28 @@ FINANCIAL_STATE_JSON:${minifiedReportJson}`;
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              {/* Toggle Visual Reconciliation Chart */}
+              <button 
+                onClick={() => setShowChart(!showChart)} 
+                title={showChart ? "Hide Reconciliation Chart" : "Show Clear Reconciliation Chart"}
+                className={`px-2 py-1 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold ${showChart ? 'bg-neu-accent text-white shadow-neu-flat' : 'text-neutral-300 hover:bg-white/10 hover:text-white'}`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-bold">Chart</span>
+              </button>
+
+              {/* Clear Chat History */}
+              <button 
+                onClick={handleClearChat} 
+                title="Clear conversation history"
+                className="px-2 py-1 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1 text-xs font-semibold"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-bold">Clear</span>
+              </button>
+
+              {/* Configure API Key */}
               <button 
                 onClick={() => setShowKeyInput(!showKeyInput)} 
                 title={manualKey ? "Custom API Key Active (Click to edit)" : "Configure custom Gemini API key"}
@@ -404,7 +458,7 @@ FINANCIAL_STATE_JSON:${minifiedReportJson}`;
               >
                 <Key className="w-4 h-4" />
               </button>
-              <button onClick={() => setIsOpen(false)} className="hover:opacity-80 transition-opacity p-1">
+              <button onClick={() => setIsOpen(false)} className="hover:opacity-80 transition-opacity p-1 text-neutral-300 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -444,6 +498,105 @@ FINANCIAL_STATE_JSON:${minifiedReportJson}`;
               <div className="text-[10px] text-neutral-400">
                 Key is persisted strictly in your browser's <code className="text-neutral-300 font-mono">localStorage</code>.
               </div>
+            </div>
+          )}
+
+          {/* Live Clear Visual Chart Panel */}
+          {showChart && (
+            <div className="bg-neu-base border-b border-neu-border p-3.5 space-y-3 shrink-0 shadow-neu-inset text-xs animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-neu-accent" />
+                  <span className="font-bold text-neu-primary text-xs uppercase tracking-wider">Reconciliation Audit Chart</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neu-primary text-neu-base">
+                    {latestResult ? `${latestResult.matchRate}% Match` : 'No Data'}
+                  </span>
+                  <button
+                    onClick={() => setShowChart(false)}
+                    className="text-neu-muted hover:text-neu-primary p-0.5"
+                    title="Close Chart"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {latestResult ? (
+                <div className="space-y-2.5">
+                  {/* Transaction Breakdown Bar */}
+                  <div>
+                    <div className="flex justify-between text-[10px] font-semibold text-neu-muted mb-1">
+                      <span>Ledger Distribution ({latestResult.batchSize} items)</span>
+                      <span>{latestResult.fullyMatched} Matched · {latestResult.totalExceptionItems} Exceptions</span>
+                    </div>
+                    <div className="h-3 w-full bg-neutral-200 rounded-full overflow-hidden flex shadow-inner">
+                      <div 
+                        style={{ width: `${(latestResult.fullyMatched / (latestResult.batchSize || 1)) * 100}%` }} 
+                        className="bg-[#2E7D32] h-full transition-all" 
+                        title={`Matched: ${latestResult.fullyMatched}`}
+                      />
+                      <div 
+                        style={{ width: `${(latestResult.partialMatches / (latestResult.batchSize || 1)) * 100}%` }} 
+                        className="bg-[#F39C12] h-full transition-all" 
+                        title={`Partial: ${latestResult.partialMatches}`}
+                      />
+                      <div 
+                        style={{ width: `${(latestResult.totalExceptionItems / (latestResult.batchSize || 1)) * 100}%` }} 
+                        className="bg-[#E74C3C] h-full transition-all" 
+                        title={`Exceptions: ${latestResult.totalExceptionItems}`}
+                      />
+                      <div 
+                        style={{ width: `${(latestResult.unmatched / (latestResult.batchSize || 1)) * 100}%` }} 
+                        className="bg-neutral-400 h-full transition-all" 
+                        title={`Unmatched: ${latestResult.unmatched}`}
+                      />
+                    </div>
+                    <div className="flex flex-wrap justify-between gap-1 text-[9px] text-neu-muted mt-1.5 font-mono">
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#2E7D32]"></span> Matched ({latestResult.fullyMatched})</span>
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#F39C12]"></span> Partial ({latestResult.partialMatches})</span>
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#E74C3C]"></span> Exceptions ({latestResult.totalExceptionItems})</span>
+                      <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-neutral-400"></span> Unmatched ({latestResult.unmatched})</span>
+                    </div>
+                  </div>
+
+                  {/* Financial Metrics */}
+                  <div className="grid grid-cols-2 gap-2 pt-0.5">
+                    <div className="p-2 rounded-xl bg-neutral-100/90 border border-neutral-200">
+                      <span className="text-[9px] uppercase font-bold text-neu-muted block">Confirmed Bank Cash</span>
+                      <span className="font-bold text-xs text-[#2E7D32]">
+                        ₹{(latestResult.amountSummary.bankCreditedValue || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-neutral-100/90 border border-neutral-200">
+                      <span className="text-[9px] uppercase font-bold text-neu-muted block">Discrepancy Exposure</span>
+                      <span className="font-bold text-xs text-[#E74C3C]">
+                        ₹{(latestResult.amountSummary.totalExceptionExposure || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-neu-border/60">
+                    <button
+                      onClick={() => handleSend("Explain the variance and distribution shown in the reconciliation chart")}
+                      className="text-[10px] font-bold text-neu-accent hover:underline flex items-center gap-1"
+                    >
+                      <TrendingUp className="w-3 h-3" /> Audit this chart in chat
+                    </button>
+                    <button
+                      onClick={() => setShowChart(false)}
+                      className="text-[10px] text-neu-muted hover:text-neu-primary font-semibold"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[11px] text-neu-muted text-center py-2">
+                  No reconciliation data available. Run demo data or upload CSVs in the Upload tab.
+                </div>
+              )}
             </div>
           )}
 
