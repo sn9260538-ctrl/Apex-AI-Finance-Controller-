@@ -7,17 +7,18 @@ import ReconciliationTab from "./components/ReconciliationTab";
 import SettingsTab from "./components/SettingsTab";
 import CashForecastTab from "./components/CashForecastTab";
 import ComplianceTab from "./components/ComplianceTab";
+import AIFinancialAgent from "./components/AIFinancialAgent";
 import { FinanceDataProvider } from "./context/FinanceDataContext";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("reconciliation");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
 
   const primaryNavItems = [
+    { id: "reconciliation", label: "Reconciliation", icon: FileSearch },
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "transactions", label: "Transactions", icon: ReceiptText },
-    { id: "reconciliation", label: "Reconciliation", icon: FileSearch },
     { id: "cash_forecast", label: "Cash & Forecast", icon: DollarSign },
     { id: "compliance", label: "Compliance", icon: ShieldCheck },
     { id: "reports", label: "Reports", icon: LineChart },
@@ -162,6 +163,7 @@ export default function App() {
             </div>
           </div>
         </main>
+        <AIFinancialAgent />
       </div>
     </FinanceDataProvider>
   );

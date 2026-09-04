@@ -6,7 +6,6 @@ import {
   ShieldCheck, ArrowRight, Activity, X, RefreshCw, Trophy, Layers, HelpCircle
 } from 'lucide-react';
 import Papa from 'papaparse';
-import { sanitizeExportRows } from '../lib/csvSecurity';
 import { Invoice, Payment, Settlement, BankCredit } from '../types';
 import StaleWarningBanner from './StaleWarningBanner';
 import IntegrityCheckCard from './IntegrityCheckCard';
